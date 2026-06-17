@@ -1,0 +1,250 @@
+/* ===================== 基底 ===================== */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+:root{
+  --bg:#1a1410;
+  --bg2:#241c14;
+  --panel:#2c2218;
+  --panel2:#3a2d1f;
+  --line:#4a3826;
+  --text:#f3e9da;
+  --muted:#b09a7e;
+  --gold:#e0b84a;
+  --red:#d6433a;
+  --blue:#3f7fd6;
+  --green:#6abf5a;
+  /* 像素風：硬邊投影，無模糊 */
+  --shadow:4px 4px 0 rgba(0,0,0,.5);
+  --pix:"Press Start 2P","Courier New",monospace;       /* 拉丁/數字 像素字 */
+  --han:"BiauKai","DFKai-SB","Noto Serif TC","Microsoft JhengHei",serif; /* 楷書字形 */
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  background:var(--bg);
+  /* 像素網格底紋 */
+  background-image:
+    linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px),
+    radial-gradient(circle at 50% 0%, #2a2016 0%, var(--bg) 65%);
+  background-size:8px 8px, 8px 8px, 100% 100%;
+  color:var(--text);
+  font-family:var(--han);
+  image-rendering:pixelated;
+  -webkit-font-smoothing:none;
+  overflow-y:auto;
+}
+/* 所有 canvas 以最近鄰縮放，保留像素邊緣 */
+canvas{image-rendering:pixelated;image-rendering:crisp-edges;}
+#app{max-width:1100px;margin:0 auto;padding:18px;min-height:100%;}
+
+/* ===================== 畫面切換 ===================== */
+.screen{display:none;animation:fade .35s ease;}
+.screen.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+/* ===================== 標題 ===================== */
+.app-header{text-align:center;margin:10px 0 24px;}
+.app-header h1{
+  font-size:42px;margin:0;letter-spacing:8px;
+  color:var(--gold);
+  /* 階梯式像素描邊陰影 */
+  text-shadow:2px 2px 0 #6b5320, 4px 4px 0 #2a2016, 0 0 0 #000;
+}
+.subtitle{
+  margin:8px 0 0;color:var(--muted);letter-spacing:2px;font-size:9px;
+  font-family:var(--pix);
+}
+
+/* ===================== 模式切換 ===================== */
+.mode-switch{display:flex;justify-content:center;gap:14px;margin-bottom:26px;}
+.mode-btn{
+  background:var(--panel);color:var(--muted);
+  border:3px solid var(--line);border-radius:0;
+  padding:12px 26px;font-size:18px;cursor:pointer;
+  font-family:var(--han);display:flex;flex-direction:column;align-items:center;gap:5px;
+  box-shadow:var(--shadow);transition:transform .08s,background .15s;
+}
+.mode-btn small{font-size:8px;opacity:.8;letter-spacing:1px;font-family:var(--pix);}
+.mode-btn:hover{border-color:var(--gold);color:var(--text);}
+.mode-btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 rgba(0,0,0,.5);}
+.mode-btn.active{background:var(--gold);color:#241c14;border-color:#f0cb5e;font-weight:bold;}
+.mode-btn.active small{opacity:.9;}
+
+/* ===================== 設定區 ===================== */
+.setup-grid{
+  display:flex;align-items:center;justify-content:center;gap:18px;
+  flex-wrap:wrap;margin-bottom:26px;
+}
+.setup-side{
+  background:var(--panel);border:4px solid var(--line);border-radius:0;
+  padding:18px;width:330px;box-shadow:var(--shadow);
+}
+.side-label{font-size:18px;font-weight:bold;letter-spacing:3px;margin-bottom:10px;text-align:center;}
+.side-a{color:var(--red);}
+.side-b{color:var(--blue);}
+.name-input{
+  width:100%;background:var(--bg2);border:3px solid var(--line);border-radius:0;
+  color:var(--text);font-size:30px;text-align:center;letter-spacing:14px;
+  padding:10px 0 10px 14px;font-family:var(--han);outline:none;
+}
+.name-input:focus{border-color:var(--gold);}
+/* 三字垂直排列 */
+.preview-row{display:flex;flex-direction:column;gap:12px;align-items:stretch;margin-top:16px;min-height:120px;}
+
+.vs-mark{font-size:30px;color:var(--gold);font-weight:bold;letter-spacing:2px;}
+
+/* 預覽卡：字形在左、素質在右 */
+.preview-card{
+  display:flex;align-items:center;gap:12px;text-align:left;
+  background:var(--bg2);border:2px solid var(--line);border-radius:0;padding:8px;
+}
+.preview-card canvas{
+  width:84px;height:84px;background:#241c14;border-radius:0;display:block;
+  border:2px solid var(--line);flex-shrink:0;image-rendering:pixelated;
+}
+.preview-stats{font-size:11px;line-height:1.6;color:var(--muted);text-align:left;flex:1;min-width:0;}
+.preview-stats .sname{color:var(--text);font-size:18px;margin-bottom:3px;}
+.stat-bar{height:5px;background:var(--bg);border-radius:0;overflow:hidden;margin-top:1px;}
+.stat-bar i{display:block;height:100%;border-radius:0;}
+.bar-w{background:#c98b3c;}
+.bar-s{background:#5a9ed6;}
+.bar-a{background:#d6433a;}
+.bar-d{background:#6abf5a;}
+
+/* ===================== 按鈕 ===================== */
+.setup-actions{display:flex;justify-content:center;gap:14px;}
+.btn-primary{
+  background:var(--gold);color:#241c14;
+  border:3px solid #f6da78;border-radius:0;padding:14px 48px;font-size:22px;font-weight:bold;
+  letter-spacing:6px;cursor:pointer;font-family:var(--han);box-shadow:var(--shadow);
+  transition:transform .08s,box-shadow .08s,filter .15s;
+}
+.btn-primary:hover:not(:disabled){filter:brightness(1.08);}
+.btn-primary:active:not(:disabled){transform:translate(4px,4px);box-shadow:0 0 0 rgba(0,0,0,.5);}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(.5);}
+.btn-ghost{
+  background:var(--panel);color:var(--muted);border:3px solid var(--line);
+  border-radius:0;padding:13px 22px;font-size:16px;cursor:pointer;font-family:var(--han);
+  letter-spacing:2px;box-shadow:var(--shadow);transition:transform .08s,box-shadow .08s,border-color .15s,color .15s;
+}
+.btn-ghost:hover{border-color:var(--gold);color:var(--text);}
+.btn-ghost:active{transform:translate(4px,4px);box-shadow:0 0 0 rgba(0,0,0,.5);}
+.btn-ghost.small{padding:8px 16px;font-size:14px;box-shadow:2px 2px 0 rgba(0,0,0,.5);}
+.btn-ghost.danger:hover{border-color:var(--red);color:var(--red);}
+
+/* ===================== 對戰畫面 ===================== */
+.battle-top-bar{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;
+}
+.score-board{
+  flex:1;display:flex;align-items:center;justify-content:center;gap:18px;
+  font-size:20px;letter-spacing:2px;
+}
+.score-board .sb-name{font-weight:bold;}
+.score-board .sb-a{color:var(--red);}
+.score-board .sb-b{color:var(--blue);}
+.score-board .sb-num{font-size:26px;color:var(--gold);font-weight:bold;font-family:var(--pix);}
+.score-board .sb-round{font-size:8px;color:var(--muted);font-family:var(--pix);line-height:1.6;}
+
+.battle-main{display:flex;gap:14px;align-items:flex-start;justify-content:center;}
+.side-panel{width:210px;flex-shrink:0;}
+.roster{display:flex;flex-direction:column;gap:10px;}
+.roster-item{
+  background:var(--panel);border:3px solid var(--line);border-radius:0;padding:8px;
+  display:flex;gap:8px;align-items:center;transition:border-color .2s,opacity .2s;position:relative;
+}
+.roster-item.fighting{border-color:var(--gold);box-shadow:3px 3px 0 rgba(224,184,74,.35);}
+.roster-item.win{border-color:var(--green);}
+.roster-item.lose{opacity:.45;}
+.roster-item canvas{width:48px;height:48px;background:#241c14;border-radius:0;border:2px solid var(--line);flex-shrink:0;image-rendering:pixelated;}
+.roster-info{font-size:12px;line-height:1.5;}
+.roster-info .rname{font-size:16px;font-weight:bold;}
+.roster-info .rstate{color:var(--muted);}
+.roster-info .rcomp{color:var(--gold);font-size:11px;}
+
+.arena-wrap{position:relative;width:520px;height:520px;flex-shrink:0;}
+#arena{
+  display:block;border-radius:50%;
+  background:radial-gradient(ellipse 70% 55% at 50% 42%, #4a3826 0%, #2c2014 70%, #1c150d 100%);
+  box-shadow:inset 0 8px 40px rgba(0,0,0,.6), var(--shadow);
+}
+.side-status-card{
+  margin-top:12px;background:var(--panel);border:3px solid var(--line);border-radius:0;
+  padding:10px;box-shadow:var(--shadow);text-align:center;
+}
+.status-diagram{
+  display:block;margin:0 auto 8px;width:172px;height:128px;background:#241c14;border:2px solid var(--line);
+}
+.battle-status{
+  font-size:12px;color:var(--muted);line-height:1.7;text-align:center;
+}
+.battle-status b{font-size:18px;color:var(--text);display:inline-block;margin-bottom:2px;}
+
+.battle-log{
+  margin:14px auto 0;max-width:760px;height:78px;overflow-y:auto;
+  background:var(--bg2);border:3px solid var(--line);border-radius:0;padding:8px 14px;
+  font-size:13px;line-height:1.7;color:var(--muted);
+}
+.battle-log .lg-crit{color:var(--gold);}
+.battle-log .lg-break{color:var(--red);}
+.battle-log .lg-win{color:var(--green);font-weight:bold;}
+
+/* ===================== 覆蓋層 ===================== */
+.overlay{
+  position:fixed;inset:0;
+  /* 較淺的暈影背幕：保留中央卡片可讀性，同時讓背景動畫透出 */
+  background:radial-gradient(circle at 50% 50%, rgba(10,7,4,.25) 0%, rgba(10,7,4,.55) 100%);
+  display:flex;align-items:center;justify-content:center;z-index:50;
+  animation:fade .3s ease;
+  pointer-events:none;            /* 背幕不攔截，僅卡片可互動 */
+}
+.overlay.hidden{display:none;}
+.overlay-card{pointer-events:auto;}
+.overlay-card{
+  background:var(--panel);border:4px solid var(--gold);border-radius:0;
+  padding:36px 50px;text-align:center;box-shadow:6px 6px 0 rgba(0,0,0,.6);min-width:320px;
+}
+.overlay-title{font-size:32px;color:var(--gold);font-weight:bold;letter-spacing:4px;margin-bottom:12px;
+  text-shadow:2px 2px 0 #6b5320,4px 4px 0 #2a2016;}
+.overlay-score{font-size:18px;color:var(--text);margin-bottom:24px;letter-spacing:2px;}
+.overlay-card .btn-primary{margin:4px;}
+.overlay-card .btn-ghost{margin:4px;}
+
+/* ===================== 名人堂 ===================== */
+.hall-title{flex:1;text-align:center;color:var(--gold);letter-spacing:4px;margin:0;font-size:22px;}
+.hall-list{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-top:10px;
+}
+.hall-card{
+  background:var(--panel);border:3px solid var(--line);border-radius:0;padding:12px;
+  cursor:pointer;box-shadow:var(--shadow);transition:transform .08s,box-shadow .08s,border-color .2s;text-align:center;
+}
+.hall-card:hover{border-color:var(--gold);transform:translate(-2px,-2px);box-shadow:6px 6px 0 rgba(0,0,0,.5);}
+.hall-card canvas{width:80px;height:80px;background:#241c14;border-radius:0;border:2px solid var(--line);image-rendering:pixelated;}
+.hall-card .hc-text{font-size:24px;font-weight:bold;margin-top:6px;}
+.hall-card .hc-rec{font-size:11px;color:var(--muted);margin-top:4px;font-family:var(--pix);line-height:1.7;}
+.hall-card .hc-wr{color:var(--gold);}
+.hall-empty{color:var(--muted);text-align:center;padding:50px;letter-spacing:2px;grid-column:1/-1;}
+
+.hall-detail{
+  margin-top:18px;background:var(--panel);border:4px solid var(--gold);border-radius:0;
+  padding:22px;display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;box-shadow:6px 6px 0 rgba(0,0,0,.5);
+}
+.hall-detail.hidden{display:none;}
+.hall-detail canvas{width:140px;height:140px;background:#241c14;border-radius:0;border:3px solid var(--line);image-rendering:pixelated;}
+.hd-body{flex:1;min-width:240px;}
+.hd-name{font-size:36px;font-weight:bold;color:var(--gold);margin-bottom:10px;}
+.hd-stat-row{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:14px;}
+.hd-stat-row .hd-label{width:60px;color:var(--muted);}
+.hd-stat-row .hd-track{flex:1;height:12px;background:var(--bg);border:2px solid var(--line);border-radius:0;overflow:hidden;}
+.hd-stat-row .hd-track i{display:block;height:100%;border-radius:0;}
+.hd-stat-row .hd-val{width:36px;text-align:right;font-family:var(--pix);font-size:11px;}
+.hd-record{margin-top:16px;font-size:15px;line-height:1.8;}
+.hd-record .hd-wr{color:var(--gold);font-weight:bold;}
+
+@media (max-width:980px){
+  .battle-main{flex-direction:column;align-items:center;}
+  .side-panel{width:100%;max-width:500px;}
+  .roster{flex-direction:row;flex-wrap:wrap;justify-content:center;}
+}

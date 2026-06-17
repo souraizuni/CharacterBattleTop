@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>姓名戰鬥陀螺 Chinese Character Battle Top</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== 設定畫面 ===================== -->
+  <section id="screen-setup" class="screen active">
+    <header class="app-header">
+      <h1>姓名戰鬥陀螺</h1>
+      <p class="subtitle">Chinese Character Battle Top</p>
+    </header>
+
+    <div class="mode-switch">
+      <button class="mode-btn active" data-mode="name">姓名對戰<small>三字三戰</small></button>
+      <button class="mode-btn" data-mode="single">單字對戰<small>一字定勝</small></button>
+    </div>
+
+    <div class="setup-grid">
+      <!-- A 方 -->
+      <div class="setup-side" data-side="A">
+        <div class="side-label side-a">紅方</div>
+        <input type="text" class="name-input" data-side="A" maxlength="3" placeholder="輸入文字" autocomplete="off">
+        <div class="preview-row" data-preview="A"></div>
+      </div>
+
+      <div class="vs-mark">VS</div>
+
+      <!-- B 方 -->
+      <div class="setup-side" data-side="B">
+        <div class="side-label side-b">藍方</div>
+        <input type="text" class="name-input" data-side="B" maxlength="3" placeholder="輸入文字" autocomplete="off">
+        <div class="preview-row" data-preview="B"></div>
+      </div>
+    </div>
+
+    <div class="setup-actions">
+      <button id="btn-start" class="btn-primary" disabled>開　戰</button>
+      <button id="btn-hall" class="btn-ghost">上場紀錄</button>
+    </div>
+  </section>
+
+  <!-- ===================== 對戰畫面 ===================== -->
+  <section id="screen-battle" class="screen">
+    <div class="battle-top-bar">
+      <button id="btn-back-setup" class="btn-ghost small">← 返回</button>
+      <div id="score-board" class="score-board"></div>
+    </div>
+
+    <div class="battle-main">
+      <!-- 左側面板 -->
+      <aside class="side-panel left">
+        <div class="roster" data-roster="A"></div>
+        <div class="side-status-card">
+          <canvas class="status-diagram" id="status-diagram-a" width="172" height="128"></canvas>
+          <div class="battle-status" data-status="A"></div>
+        </div>
+      </aside>
+
+      <!-- 競技場 -->
+      <div class="arena-wrap">
+        <canvas id="arena" width="520" height="520"></canvas>
+      </div>
+
+      <!-- 右側面板 -->
+      <aside class="side-panel right">
+        <div class="roster" data-roster="B"></div>
+        <div class="side-status-card">
+          <canvas class="status-diagram" id="status-diagram-b" width="172" height="128"></canvas>
+          <div class="battle-status" data-status="B"></div>
+        </div>
+      </aside>
+    </div>
+
+    <div class="battle-log" id="battle-log"></div>
+
+    <!-- 回合結束覆蓋層 -->
+    <div id="round-overlay" class="overlay hidden">
+      <div class="overlay-card">
+        <div class="overlay-title" id="round-title"></div>
+        <div class="overlay-score" id="round-score"></div>
+        <button id="btn-next-round" class="btn-primary">下一回合</button>
+      </div>
+    </div>
+
+    <!-- 全場結束覆蓋層 -->
+    <div id="match-overlay" class="overlay hidden">
+      <div class="overlay-card">
+        <div class="overlay-title" id="match-title"></div>
+        <div class="overlay-score" id="match-score"></div>
+        <button id="btn-rematch" class="btn-primary">再來一場</button>
+        <button id="btn-home" class="btn-ghost">回到設定</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 名人堂 ===================== -->
+  <section id="screen-hall" class="screen">
+    <div class="battle-top-bar">
+      <button id="btn-back-from-hall" class="btn-ghost small">← 返回</button>
+      <h2 class="hall-title">上場紀錄 · 名人堂</h2>
+      <button id="btn-clear-hall" class="btn-ghost small danger">清除全部</button>
+    </div>
+    <div id="hall-list" class="hall-list"></div>
+    <div id="hall-detail" class="hall-detail hidden"></div>
+  </section>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>
