@@ -997,6 +997,7 @@ class Arena {
     this.topB = null;
     this.lastA = 0;
     this.lastB = 0;
+    this.decisionEndsAt = 0;
     this.raf = 0;
   }
 
@@ -1017,6 +1018,7 @@ class Arena {
     this.topB = null;
     this.lastA = 0;
     this.lastB = 0;
+    this.decisionEndsAt = 0;
   }
 
   spawn(topA, topB) {
@@ -1087,17 +1089,19 @@ class Arena {
       winner = stateA.dead ? 1 : 0;
     }
     this.decided = true;
-    this.running = false;
-    this.effects = [];
-    this.shake = 0;
-    this.shakeX = 0;
-    this.shakeY = 0;
+    this.decisionEndsAt = Date.now() + 1000;
     this.onEnd && this.onEnd(winner, { A: stateA, B: stateB });
     return true;
   }
 
   step() {
-    if (!this.topA || !this.topB || this.decided) return;
+    if (!this.topA || !this.topB) return;
+    if (this.decided) {
+      for (const body of this.bodiesA) stepBody(body, this.cx, this.cy);
+      for (const body of this.bodiesB) stepBody(body, this.cx, this.cy);
+      if (Date.now() >= this.decisionEndsAt) this.running = false;
+      return;
+    }
     for (let s = 0; s < SUBSTEPS; s++) {
       for (const body of this.bodiesA) stepBody(body, this.cx, this.cy);
       for (const body of this.bodiesB) stepBody(body, this.cx, this.cy);
