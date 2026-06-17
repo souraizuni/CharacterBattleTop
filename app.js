@@ -44,6 +44,9 @@ const TEAM_RED = '#d6433a';
 const TEAM_BLUE = '#3f7fd6';
 const HALL_GOLD = '#e0b84a';
 const TOP_CACHE = new Map();
+const SPAWN_DELAY_MS = 400;
+const POST_DECISION_RENDER_MS = 1000;
+const RESULT_OVERLAY_DELAY_MS = POST_DECISION_RENDER_MS;
 
 /* ===================== 工具 ===================== */
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
@@ -81,16 +84,9 @@ function rasterMaster(text, color) {
 
 function cloneTop(baseTop) {
   if (!baseTop) return null;
-  const adj = {};
-  for (const [key, value] of Object.entries(baseTop.adj)) adj[key] = [...value];
   return {
     ...baseTop,
-    nodes: baseTop.nodes.map(node => ({ ...node })),
-    joints: baseTop.joints.map(joint => ({ ...joint })),
-    adj,
-    depth: [...baseTop.depth],
-    neckOf: [...baseTop.neckOf],
-    stats: { ...baseTop.stats }
+    joints: baseTop.joints.map(joint => ({ ...joint }))
   };
 }
 
@@ -285,6 +281,14 @@ function buildTop(text, color) {
     }
   }
 
+  const strokeJointIndicesByNode = Array.from({ length: nodes.length }, () => []);
+  const supportJointIndicesByNode = Array.from({ length: nodes.length }, () => []);
+  joints.forEach((joint, index) => {
+    const bucket = joint.kind === 'stroke' ? strokeJointIndicesByNode : supportJointIndicesByNode;
+    bucket[joint.a].push(index);
+    bucket[joint.b].push(index);
+  });
+
   const adj = {};
   for (let i = 0; i < nodes.length; i++) adj[i] = [];
   for (const joint of joints) {
@@ -361,6 +365,8 @@ function buildTop(text, color) {
     tileDisp,
     sc,
     comp,
+    strokeJointIndicesByNode,
+    supportJointIndicesByNode,
     centerNode,
     depth,
     neckOf,
@@ -867,7 +873,8 @@ function applyFracture(top, bodies, stress, fx) {
       while (stack.length) {
         const u = stack.pop();
         const du = top.depth[u];
-        for (const joint of top.joints) {
+        for (const jointIndex of top.strokeJointIndicesByNode[u]) {
+          const joint = top.joints[jointIndex];
           if (joint.broken || joint.kind !== 'stroke' || !nodeSet.has(joint.a) || !nodeSet.has(joint.b)) continue;
           const other = joint.a === u ? joint.b : (joint.b === u ? joint.a : -1);
           if (other < 0) continue;
@@ -886,12 +893,18 @@ function applyFracture(top, bodies, stress, fx) {
       }
     }
 
-    for (const joint of top.joints) {
-      if (joint.broken || joint.kind !== 'support' || !nodeSet.has(joint.a) || !nodeSet.has(joint.b)) continue;
-      const s = Math.max(stress[joint.a] || 0, stress[joint.b] || 0);
-      if (s > TOUGH * bondStrength * 0.5) {
-        joint.broken = true;
-        broke = true;
+    const seenSupport = new Set();
+    for (const nodeIndex of body.nodeIdxs) {
+      for (const jointIndex of top.supportJointIndicesByNode[nodeIndex]) {
+        if (seenSupport.has(jointIndex)) continue;
+        seenSupport.add(jointIndex);
+        const joint = top.joints[jointIndex];
+        if (joint.broken || joint.kind !== 'support' || !nodeSet.has(joint.a) || !nodeSet.has(joint.b)) continue;
+        const s = Math.max(stress[joint.a] || 0, stress[joint.b] || 0);
+        if (s > TOUGH * bondStrength * 0.5) {
+          joint.broken = true;
+          broke = true;
+        }
       }
     }
 
@@ -998,6 +1011,7 @@ class Arena {
     this.lastA = 0;
     this.lastB = 0;
     this.decisionEndsAt = 0;
+    this.onFrame = null;
     this.raf = 0;
   }
 
@@ -1089,7 +1103,7 @@ class Arena {
       winner = stateA.dead ? 1 : 0;
     }
     this.decided = true;
-    this.decisionEndsAt = Date.now() + 1000;
+    this.decisionEndsAt = Date.now() + POST_DECISION_RENDER_MS;
     this.onEnd && this.onEnd(winner, { A: stateA, B: stateB });
     return true;
   }
@@ -1132,6 +1146,7 @@ class Arena {
     if (!this.running) return;
     this.step();
     this.render();
+    this.onFrame && this.onFrame();
     if (this.running) this.raf = requestAnimationFrame(() => this._loop());
   }
 
@@ -1310,10 +1325,13 @@ const App = {
   topsB: [],
   match: null,
   arena: null,
-  statusTimer: 0,
+  roundStartTimer: 0,
+  roundEndTimer: 0,
+  statusSnapshot: [null, null],
 
   init() {
     this.arena = new Arena(document.getElementById('arena'));
+    this.arena.onFrame = () => this.updateStatus();
     this.bindSetup();
     this.bindBattle();
     this.bindHall();
@@ -1332,6 +1350,21 @@ const App = {
   hideBattleOverlays() {
     document.getElementById('round-overlay').classList.add('hidden');
     document.getElementById('match-overlay').classList.add('hidden');
+  },
+
+  clearPendingTimers() {
+    if (this.roundStartTimer) {
+      clearTimeout(this.roundStartTimer);
+      this.roundStartTimer = 0;
+    }
+    if (this.roundEndTimer) {
+      clearTimeout(this.roundEndTimer);
+      this.roundEndTimer = 0;
+    }
+  },
+
+  resetStatusSnapshot() {
+    this.statusSnapshot = [null, null];
   },
 
   bindSetup() {
@@ -1415,6 +1448,7 @@ const App = {
     const B = this.topsB;
     if (!A.length || !B.length) return;
     if (this.mode === 'name' && (A.length < 3 || B.length < 3)) return;
+    this.clearPendingTimers();
     this.match = {
       mode: this.mode,
       names: [this.getChars('A').join(''), this.getChars('B').join('')],
@@ -1442,8 +1476,9 @@ const App = {
     m.curB = tb;
 
     this.hideBattleOverlays();
+    this.clearPendingTimers();
     this.arena.reset();
-    clearInterval(this.statusTimer);
+    this.resetStatusSnapshot();
     this.renderRoster();
     this.renderScore();
     this.clearLog();
@@ -1451,8 +1486,10 @@ const App = {
     this.updateStatus();
     this.arena.log = html => this.log(html);
     this.arena.onEnd = (winner, states) => this.onRoundEnd(winner, states);
-    setTimeout(() => this.arena.spawn(ta, tb), 400);
-    this.statusTimer = setInterval(() => this.updateStatus(), 120);
+    this.roundStartTimer = setTimeout(() => {
+      this.roundStartTimer = 0;
+      this.arena.spawn(ta, tb);
+    }, SPAWN_DELAY_MS);
   },
 
   onRoundEnd(winner, states) {
@@ -1469,10 +1506,12 @@ const App = {
     this.renderScore();
 
     const done = m.round + 1 >= m.rounds;
-    setTimeout(() => {
+    this.clearPendingTimers();
+    this.roundEndTimer = setTimeout(() => {
+      this.roundEndTimer = 0;
       if (done) this.showMatchOverlay();
       else this.showRoundOverlay(winner);
-    }, 900);
+    }, RESULT_OVERLAY_DELAY_MS);
   },
 
   showRoundOverlay(winner) {
@@ -1504,26 +1543,30 @@ const App = {
   bindBattle() {
     document.getElementById('btn-back-setup').addEventListener('click', () => {
       this.hideBattleOverlays();
+      this.clearPendingTimers();
       this.arena.reset();
-      clearInterval(this.statusTimer);
+      this.resetStatusSnapshot();
       this.show('screen-setup');
     });
 
     document.getElementById('btn-next-round').addEventListener('click', () => {
+      this.clearPendingTimers();
       document.getElementById('round-overlay').classList.add('hidden');
       this.match.round++;
       this.setupRound();
     });
 
     document.getElementById('btn-rematch').addEventListener('click', () => {
+      this.clearPendingTimers();
       document.getElementById('match-overlay').classList.add('hidden');
       this.startMatch();
     });
 
     document.getElementById('btn-home').addEventListener('click', () => {
       this.hideBattleOverlays();
+      this.clearPendingTimers();
       this.arena.reset();
-      clearInterval(this.statusTimer);
+      this.resetStatusSnapshot();
       this.show('screen-setup');
     });
   },
@@ -1580,7 +1623,7 @@ const App = {
 
   updateStatus() {
     const m = this.match;
-    if (!m) return;
+    if (!m || !document.getElementById('screen-battle').classList.contains('active')) return;
     [0, 1].forEach(side => {
       const body = this.arena.centralBody(side);
       const bodies = side === 0 ? this.arena.bodiesA : this.arena.bodiesB;
@@ -1588,6 +1631,17 @@ const App = {
       const el = document.querySelector(`.battle-status[data-status="${side === 0 ? 'A' : 'B'}"]`);
       const canvas = document.getElementById(side === 0 ? 'status-diagram-a' : 'status-diagram-b');
       const comp = body ? Math.round(body.m / body.top.origMass * 100) : 0;
+      const snapshot = {
+        topText: top ? top.text : '',
+        comp,
+        body,
+        bodiesLength: bodies.length
+      };
+      const prev = this.statusSnapshot[side];
+      if (prev && prev.topText === snapshot.topText && prev.comp === snapshot.comp && prev.body === snapshot.body && prev.bodiesLength === snapshot.bodiesLength) {
+        return;
+      }
+      this.statusSnapshot[side] = snapshot;
       drawStatusDiagram(canvas, top, nodeBodyMap(bodies), body);
       el.innerHTML = `<b style="color:${side === 0 ? 'var(--red)' : 'var(--blue)'}">${top ? top.text : '—'}</b><br>完整度 ${comp}%`;
     });
